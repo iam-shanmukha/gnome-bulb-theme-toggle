@@ -20,6 +20,10 @@ A GNOME Shell extension that hangs a little light bulb from your top bar.
 
 Tested on GNOME Shell 46 (Ubuntu 24.04).
 
+[<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/master/get-it-on-ego.svg" alt="Get it on GNOME Extensions" height="100">](https://extensions.gnome.org/extension/11237/bulb-theme-toggle/)
+
+> The extensions.gnome.org listing is awaiting review. Until it's approved, install from source:
+
 ```sh
 git clone https://github.com/iam-shanmukha/gnome-bulb-theme-toggle.git
 cd gnome-bulb-theme-toggle
