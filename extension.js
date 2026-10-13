@@ -42,14 +42,15 @@ class BulbButton extends PanelMenu.Button {
     }
 
     _paintRest(area) {
-        const cr = area.get_context();
-        const [w] = area.get_surface_size();
-        const ax = w / 2;
-        drawBulb(cr, {
-            ax, ay: 0, bx: ax, by: GEOMETRY.restCord * this._scale,
-            on: this._lit, cordColor: this._cordColor(), scale: this._scale,
+        const context = area.get_context();
+        const [width] = area.get_surface_size();
+        const centerX = width / 2;
+        drawBulb(context, {
+            anchorX: centerX, anchorY: 0,
+            bulbX: centerX, bulbY: GEOMETRY.restCord * this._scale,
+            lit: this._lit, cordColor: this._cordColor(), scale: this._scale,
         });
-        cr.$dispose();
+        context.$dispose();
     }
 
     vfunc_event(event) {
@@ -70,10 +71,10 @@ class BulbButton extends PanelMenu.Button {
     _beginPull(event) {
         if (this._overlay)
             return;
-        const s = this._scale;
-        const [ax0, ay0] = this._area.get_transformed_position();
-        const [aw] = this._area.get_transformed_size();
-        this._anchor = {x: ax0 + aw / 2, y: ay0};
+        const scale = this._scale;
+        const [areaX, areaY] = this._area.get_transformed_position();
+        const [areaWidth] = this._area.get_transformed_size();
+        this._anchor = {x: areaX + areaWidth / 2, y: areaY};
         [this._startX, this._startY] = event.get_coords();
         this._pull = {dx: 0, dy: 0};
         this._moved = false;
@@ -85,44 +86,44 @@ class BulbButton extends PanelMenu.Button {
             width: global.stage.width,
             height: global.stage.height,
         });
-        const pad = (MAX_SWAY + GEOMETRY.radius * 3) * s;
+        const pad = (MAX_SWAY + GEOMETRY.radius * 3) * scale;
         this._canvas = new St.DrawingArea({
             x: this._anchor.x - pad,
             y: this._anchor.y,
             width: pad * 2,
-            height: (MAX_PULL + GEOMETRY.radius * 3) * s + bulbExtent(s),
+            height: (MAX_PULL + GEOMETRY.radius * 3) * scale + bulbExtent(scale),
         });
         this._canvas.connect('repaint', area => this._paintPulled(area, pad));
         this._overlay.add_child(this._canvas);
         Main.layoutManager.uiGroup.add_child(this._overlay);
 
-        this._overlay.connect('motion-event', (_a, e) => this._onMotion(e));
-        this._overlay.connect('touch-event', (_a, e) => this._onTouch(e));
+        this._overlay.connect('motion-event', (_actor, motionEvent) => this._onMotion(motionEvent));
+        this._overlay.connect('touch-event', (_actor, touchEvent) => this._onTouch(touchEvent));
         this._overlay.connect('button-release-event', () => this._endPull());
 
         this._grab = global.stage.grab(this._overlay);
         this._area.opacity = 0;
     }
 
-    _onTouch(e) {
-        const t = e.type();
-        if (t === Clutter.EventType.TOUCH_UPDATE)
-            return this._onMotion(e);
-        if (t === Clutter.EventType.TOUCH_END || t === Clutter.EventType.TOUCH_CANCEL)
+    _onTouch(event) {
+        const type = event.type();
+        if (type === Clutter.EventType.TOUCH_UPDATE)
+            return this._onMotion(event);
+        if (type === Clutter.EventType.TOUCH_END || type === Clutter.EventType.TOUCH_CANCEL)
             return this._endPull();
         return Clutter.EVENT_STOP;
     }
 
-    _onMotion(e) {
+    _onMotion(event) {
         if (this._springing)
             return Clutter.EVENT_STOP;
-        const s = this._scale;
-        const [x, y] = e.get_coords();
+        const scale = this._scale;
+        const [x, y] = event.get_coords();
         const rawY = Math.max(0, y - this._startY);
         const rawX = x - this._startX;
-        if (Math.hypot(rawX, rawY) > CLICK_SLOP * s)
+        if (Math.hypot(rawX, rawY) > CLICK_SLOP * scale)
             this._moved = true;
-        const max = MAX_PULL * s, sway = MAX_SWAY * s;
+        const max = MAX_PULL * scale, sway = MAX_SWAY * scale;
         // Rubber-band: easy at first, stiffer as it stretches.
         this._pull = {
             dy: max * (1 - Math.exp(-rawY / max)),
@@ -139,10 +140,10 @@ class BulbButton extends PanelMenu.Button {
         this._grab = null;
         this._overlay.reactive = false;
 
-        const s = this._scale;
-        const toggled = !this._moved || this._pull.dy >= TOGGLE_PULL * s;
+        const scale = this._scale;
+        const toggled = !this._moved || this._pull.dy >= TOGGLE_PULL * scale;
         if (!this._moved)
-            this._pull = {dx: 0, dy: TOGGLE_PULL * 0.6 * s}; // a little tug for clicks
+            this._pull = {dx: 0, dy: TOGGLE_PULL * 0.6 * scale}; // a little tug for clicks
         if (toggled)
             this._theme.toggle();
         this._springBack();
@@ -154,11 +155,11 @@ class BulbButton extends PanelMenu.Button {
         const from = {...this._pull};
         const minDy = -GEOMETRY.restCord * 0.4 * this._scale;
         this._timeline = new Clutter.Timeline({actor: this._canvas, duration: SPRING_MS});
-        this._timeline.connect('new-frame', tl => {
-            const t = tl.get_elapsed_time() / 1000;
+        this._timeline.connect('new-frame', timeline => {
+            const seconds = timeline.get_elapsed_time() / 1000;
             this._pull = {
-                dy: Math.max(minDy, from.dy * Math.exp(-6 * t) * Math.cos(16 * t)),
-                dx: from.dx * Math.exp(-4 * t) * Math.cos(11 * t),
+                dy: Math.max(minDy, from.dy * Math.exp(-6 * seconds) * Math.cos(16 * seconds)),
+                dx: from.dx * Math.exp(-4 * seconds) * Math.cos(11 * seconds),
             };
             this._canvas.queue_repaint();
         });
@@ -177,15 +178,14 @@ class BulbButton extends PanelMenu.Button {
     }
 
     _paintPulled(area, pad) {
-        const cr = area.get_context();
-        const s = this._scale;
-        drawBulb(cr, {
-            ax: pad, ay: 0,
-            bx: pad + this._pull.dx,
-            by: GEOMETRY.restCord * s + this._pull.dy,
-            on: this._lit, cordColor: this._cordColor(), scale: s,
+        const context = area.get_context();
+        drawBulb(context, {
+            anchorX: pad, anchorY: 0,
+            bulbX: pad + this._pull.dx,
+            bulbY: GEOMETRY.restCord * this._scale + this._pull.dy,
+            lit: this._lit, cordColor: this._cordColor(), scale: this._scale,
         });
-        cr.$dispose();
+        context.$dispose();
     }
 
     destroy() {
