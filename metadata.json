@@ -1,0 +1,8 @@
+{
+  "uuid": "bulb-theme-toggle@iam-shanmukha.github.io",
+  "name": "Bulb Theme Toggle",
+  "description": "A hanging light bulb in the top bar. Pull it down (or click it) to toggle between dark and light theme.",
+  "shell-version": ["46"],
+  "url": "https://github.com/iam-shanmukha/gnome-bulb-theme-toggle",
+  "version": 1
+}
